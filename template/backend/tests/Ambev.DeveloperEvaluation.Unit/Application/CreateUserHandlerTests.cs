@@ -7,6 +7,8 @@ using AutoMapper;
 using FluentAssertions;
 using NSubstitute;
 using Xunit;
+using Bogus;
+using Ambev.DeveloperEvaluation.Domain.Enums;
 
 namespace Ambev.DeveloperEvaluation.Unit.Application;
 
@@ -159,5 +161,58 @@ public class CreateUserHandlerTests
             c.Phone == command.Phone &&
             c.Status == command.Status &&
             c.Role == command.Role));
+    }
+
+    [Fact]
+    public async Task Should_Create_User_With_Fake_Data_And_Mock_Repository()
+    {
+        // Arrange
+        var validPhone = "+5511999999999";
+        var faker = new Faker<User>()
+            .RuleFor(u => u.Id, f => f.Random.Guid())
+            .RuleFor(u => u.Username, f => f.Name.FullName())
+            .RuleFor(u => u.Email, f => f.Internet.Email())
+            .RuleFor(u => u.Password, f => "Test@123") // Valid password with special char
+            .RuleFor(u => u.Phone, f => validPhone)
+            .RuleFor(u => u.Role, f => UserRole.Admin)
+            .RuleFor(u => u.Status, f => UserStatus.Active);
+
+        var fakeUser = faker.Generate();
+
+        var repo = Substitute.For<IUserRepository>();
+        repo.CreateAsync(Arg.Any<User>(), default).Returns(fakeUser);
+        repo.GetByEmailAsync(Arg.Any<string>(), default).Returns((User?)null);
+
+        var mapper = Substitute.For<IMapper>();
+        mapper.Map<User>(Arg.Any<CreateUserCommand>()).Returns(fakeUser);
+        mapper.Map<CreateUserResult>(fakeUser).Returns(new CreateUserResult
+        {
+            Id = fakeUser.Id
+        });
+
+        var passwordHasher = Substitute.For<IPasswordHasher>();
+        passwordHasher.HashPassword(Arg.Any<string>()).Returns("hashed-password");
+
+        var handler = new CreateUserHandler(repo, mapper, passwordHasher);
+
+        var command = new CreateUserCommand
+        {
+            Username = fakeUser.Username,
+            Email = fakeUser.Email,
+            Password = "Test@123",
+            Phone = validPhone,
+            Role = UserRole.Admin,
+            Status = UserStatus.Active
+        };
+
+        // Act
+        var result = await handler.Handle(command, default);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Equal(fakeUser.Id, result.Id);
+
+        await repo.Received(1).CreateAsync(Arg.Any<User>(), default);
+        passwordHasher.Received(1).HashPassword(Arg.Any<string>());
     }
 }

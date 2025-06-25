@@ -12,7 +12,9 @@
 			<PrivateAssets>all</PrivateAssets>
 		</PackageReference>
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.10" />
+		<PackageReference Include="MongoDB.Driver" Version="3.4.0" />
 		<PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.8" />
+		<PackageReference Include="Rebus" Version="8.8.0" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Ambev.DeveloperEvaluation.Domain\Ambev.DeveloperEvaluation.Domain.csproj" />
